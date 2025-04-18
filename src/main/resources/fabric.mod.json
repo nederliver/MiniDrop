@@ -1,0 +1,37 @@
+{
+	"schemaVersion": 1,
+	"id": "minidrop",
+	"version": "${version}",
+	"name": "MiniDrop",
+	"description": "This is an example description! Tell everyone what your mod is about!",
+	"authors": [
+		"Me!"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/minidrop/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"net.nederliver.minidrop.MiniDrop"
+		],
+		"fabric-datagen": [
+			"net.nederliver.minidrop.MiniDropDataGenerator"
+		]
+	},
+	"mixins": [
+		"minidrop.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.16.13",
+		"minecraft": "~1.21.5",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
+}
