@@ -25,7 +25,10 @@ import net.minecraft.screen.GenericContainerScreenHandler;
 import net.minecraft.screen.ScreenHandler; // Base type
 import net.minecraft.client.gui.screen.ingame.ShulkerBoxScreen;
 import net.minecraft.client.gui.screen.ingame.GenericContainerScreen;
-
+import net.minecraft.text.Text;
+// If your tooltip method requires a list:
+import com.mojang.blaze3d.systems.RenderSystem;
+import java.util.List;
 // Mixin Imports
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -377,7 +380,89 @@ public abstract class HandledScreenMixin extends Screen {
 
         // If the release wasn't over any interactive MiniDrop element, let vanilla handle it.
     }
+    @Inject(method = "render", at = @At("TAIL"))
+    private void renderMiniDropAndTooltip(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) { // Renamed handler method for clarity
 
+        // --- 1. Render the MiniDrop Panel (Existing Logic) ---
+        // Keep your existing panel rendering logic here
+        if (this.miniDrop_shouldApply && MiniDropConfig.isMenuVisible) {
+            try {
+                int screenXBase = this.x;
+                int screenYBase = this.y;
+                int bgWidth = this.backgroundWidth; if (bgWidth <= 0) bgWidth = 176;
+
+                // Calculate positions for panel elements
+                int menuPanelX_absolute = screenXBase + bgWidth + PADDING - 1;
+                int menuPanelY_absolute = screenYBase + PADDING - 4;
+                int switchX_absolute = menuPanelX_absolute;
+                int switchY_absolute = menuPanelY_absolute + PANEL_TEXTURE_HEIGHT + SWITCH_VERTICAL_PADDING;
+                int slotVisualBaseX_abs = menuPanelX_absolute + SLOT_AREA_X_OFFSET;
+                int slotVisualBaseY_abs = menuPanelY_absolute + SLOT_AREA_Y_OFFSET;
+                int slot1VisualY_abs = slotVisualBaseY_abs;
+                int slot2VisualY_abs = slot1VisualY_abs + SLOT_SIZE + SLOT_PADDING_VERTICAL;
+                int slot3VisualY_abs = slot2VisualY_abs + SLOT_SIZE + SLOT_PADDING_VERTICAL;
+                int itemRenderBaseX = slotVisualBaseX_abs + ITEM_RENDER_OFFSET;
+
+                RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+                // Draw Panel Background Texture
+                context.drawTexture(RenderLayer::getGuiTextured, MINIDROP_PANEL_TEXTURE, menuPanelX_absolute, menuPanelY_absolute, 0, 0, PANEL_TEXTURE_WIDTH, PANEL_TEXTURE_HEIGHT, PANEL_TEXTURE_WIDTH, PANEL_TEXTURE_HEIGHT);
+
+                // Render Items in Slots
+                if (!MiniDropConfig.slot1Stack.isEmpty()) {
+                    context.drawItem(MiniDropConfig.slot1Stack, itemRenderBaseX, slot1VisualY_abs + ITEM_RENDER_OFFSET + 2);
+                }
+                if (!MiniDropConfig.slot2Stack.isEmpty()) {
+                    context.drawItem(MiniDropConfig.slot2Stack, itemRenderBaseX, slot2VisualY_abs + ITEM_RENDER_OFFSET);
+                }
+                if (!MiniDropConfig.slot3Stack.isEmpty()) {
+                    context.drawItem(MiniDropConfig.slot3Stack, itemRenderBaseX, slot3VisualY_abs - 1);
+                }
+
+                // Draw Switch Texture
+                float switchV = MiniDropConfig.isSwitchToggled ? (float) SWITCH_ICON_HEIGHT : 0.0f;
+                RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+                context.drawTexture(
+                        RenderLayer::getGuiTextured, MINIDROP_SWITCH_TEXTURE,
+                        switchX_absolute, switchY_absolute,
+                        0.0f, switchV,
+                        SWITCH_ICON_WIDTH, SWITCH_ICON_HEIGHT,
+                        SWITCH_TEXTURE_WIDTH, SWITCH_TEXTURE_HEIGHT
+                );
+
+            } catch (Exception e) {
+                System.err.println("[MiniDrop Error] Failed during panel render: " + e.getMessage()); // Clarified error source
+                e.printStackTrace();
+            }
+        } // End of panel rendering block
+
+
+        // --- 2. Render the Title Tooltip (New Logic) ---
+        if (this.miniDrop_shouldApply) { // Check if the feature is active for this screen
+            // Calculate absolute title coordinates using stored relative values and current screen position
+            int absoluteTitleX = this.x + this.miniDrop_titleRelX;
+            int absoluteTitleY = this.y + this.miniDrop_titleRelY;
+
+            // Check if mouse is hovering over the title area calculated during init
+            // Ensure title width/height were calculated correctly in init
+            boolean isHoveringTitle = this.miniDrop_titleWidth > 0 && // Avoid check if title wasn't processed
+                    mouseX >= absoluteTitleX && mouseX < absoluteTitleX + this.miniDrop_titleWidth &&
+                    mouseY >= absoluteTitleY && mouseY < absoluteTitleY + this.miniDrop_titleHeight;
+
+            if (isHoveringTitle) {
+                // Create the tooltip text. Use Text.translatable for localization support if desired!
+                Text tooltipText = Text.literal("Click to open Mini Item Drop menu");
+
+                // Render the tooltip at the current mouse position
+                // 'this.textRenderer' is inherited from Screen and should be available
+                // The method might expect a List<Text> in some versions/contexts.
+                context.drawTooltip(this.textRenderer, tooltipText, mouseX, mouseY);
+
+                // If the above doesn't work, try wrapping the text in a list:
+                // context.drawTooltip(this.textRenderer, List.of(tooltipText), mouseX, mouseY);
+            }
+        }
+    } // End of render method injection
 
     @Inject(method = "render", at = @At("TAIL"))
     private void renderMiniDrop(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
